@@ -1,0 +1,32 @@
+services:
+  # --- Nginx Gateway (Signaling + Whitelist Logic) ---
+  nginx-gateway:
+    build:
+      context: ./nginx
+      dockerfile: nginx.Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ALLOWED_DOMAINS=${PROXY_DOMAIN}
+    volumes:
+      - ssl_data:/etc/resty-auto-ssl
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # --- Coturn (Media Relay) ---
+  coturn:
+    image: coturn/coturn
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf
+    command: >
+      -c /etc/coturn/turnserver.conf
+      --static-auth-secret=${TURN_SECRET}
+      --realm=${PROXY_DOMAIN}
+      --external-ip=${EXTERNAL_IP}
+
+volumes:
+  ssl_data:
